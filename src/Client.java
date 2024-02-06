@@ -1,14 +1,16 @@
-import javax.crypto.Cipher;
 import java.io.*;
+import java.math.BigInteger;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Paths;
-import java.security.*;
+import java.security.KeyFactory;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.MessageDigest;
 import java.security.spec.PKCS8EncodedKeySpec;
-import java.security.spec.X509EncodedKeySpec;
+import java.util.Date;
+import java.util.Scanner;
 
 public class Client {
-
     public static void main(String[] args) {
         if (args.length != 3) {
             System.out.println("Usage: java Client host port userid");
@@ -20,32 +22,58 @@ public class Client {
         String userId = args[2];
 
         try {
-            // Generate keys if not exist
             generateKeys(userId);
 
-            Socket socket = new Socket(host, port);
-            DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
-            DataInputStream dis = new DataInputStream(socket.getInputStream());
+            try (Socket socket = new Socket(host, port);
+                 DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+                 DataInputStream dis = new DataInputStream(socket.getInputStream());
+                 Scanner scanner = new Scanner(System.in)) {
 
-            dos.writeUTF(userId);
+                // Send user ID
+                dos.writeUTF(userId);
 
-            // Load user's private key
-            FileInputStream fis = new FileInputStream(userId + ".prv");
-            byte[] prvKeyBytes = new byte[fis.available()];
-            fis.read(prvKeyBytes);
-            fis.close();
-            PrivateKey privateKey = KeyFactory.getInstance("RSA").generatePrivate(new PKCS8EncodedKeySpec(prvKeyBytes));
+                // Receive number of messages
+                int numMessages = dis.readInt();
+                System.out.println("There are " + numMessages + " message(s) for you:");
 
-            // Load server's public key
-            fis = new FileInputStream("server.pub");
-            byte[] serverPubKeyBytes = new byte[fis.available()];
-            fis.read(serverPubKeyBytes);
-            fis.close();
-            PublicKey serverPublicKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(serverPubKeyBytes));
+                // For each message, display the message
+                for (int i = 0; i < numMessages; i++) {
+                    String message = dis.readUTF();
+                    System.out.println(message);
+                }
 
-            // Send encrypted message
-            sendMessage(socket, serverPublicKey, "Hello, server!");
+                // Ask user whether they want to send a message
+                String response;
+                do {
+                    System.out.println("Do you want to send a message? (yes/no)");
+                    response = scanner.nextLine();
+                    if ("yes".equalsIgnoreCase(response)) {
+                        // Prompt user to enter recipient userid
+                        System.out.println("Enter recipient userid:");
+                        String recipientUserId = scanner.nextLine();
 
+                        // Compare userIDs directly
+                        if (recipientUserId.equalsIgnoreCase(userId)) {
+                            System.out.println("You cannot send a message to yourself.");
+                            continue;
+                        }
+
+                        System.out.println("Enter message:");
+                        String message = scanner.nextLine();
+
+                        // Send recipient userid, timestamp, and message to server
+                        dos.writeUTF(recipientUserId);
+                        dos.writeLong(new Date().getTime());
+                        dos.writeUTF(message);
+                    }
+                } while ("yes".equalsIgnoreCase(response));
+
+                // Send "exit" to the server to indicate client wants to exit
+                dos.writeUTF("exit");
+
+                // Close the socket after sending "exit"
+                socket.close();
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -53,12 +81,10 @@ public class Client {
 
     private static void generateKeys(String userId) {
         try {
-            // Check if keys already exist
             File pubKeyFile = new File(userId + ".pub");
             File prvKeyFile = new File(userId + ".prv");
 
             if (!pubKeyFile.exists() || !prvKeyFile.exists()) {
-                // Keys do not exist, generate them
                 System.out.println("Generating keys for user: " + userId);
                 generateKeysInternal(userId);
             }
@@ -73,12 +99,10 @@ public class Client {
             kpg.initialize(2048);
             KeyPair kp = kpg.genKeyPair();
 
-            // Save public key
             try (FileOutputStream fos = new FileOutputStream(userId + ".pub")) {
                 fos.write(kp.getPublic().getEncoded());
             }
 
-            // Save private key in PKCS#8 format
             try (FileOutputStream fos = new FileOutputStream(userId + ".prv")) {
                 KeyFactory keyFactory = KeyFactory.getInstance("RSA");
                 PKCS8EncodedKeySpec pkcs8EncodedKeySpec = new PKCS8EncodedKeySpec(kp.getPrivate().getEncoded());
@@ -89,16 +113,8 @@ public class Client {
         }
     }
 
-    private static void sendMessage(Socket socket, PublicKey publicKey, String message) throws Exception {
-        DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
-
-        // Encrypt message
-        Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
-        cipher.init(Cipher.ENCRYPT_MODE, publicKey);
-        byte[] encryptedMessage = cipher.doFinal(message.getBytes(StandardCharsets.UTF_8));
-
-        // Send encrypted message
-        dos.writeInt(encryptedMessage.length);
-        dos.write(encryptedMessage);
+    public static String toHexString(byte[] bytes) {
+        BigInteger bi = new BigInteger(1, bytes);
+        return String.format("%0" + (bytes.length << 1) + "x", bi);
     }
 }
