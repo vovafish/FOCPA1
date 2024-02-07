@@ -1,20 +1,10 @@
-Check the program for this points
-1) check if it works on the uni linux site
-2) check if "userid/filenames being hardcoded"
-3) check for the API methods "It will only be concerned about whether you are using the right API methods, feed them
-with the right data and use their output."
-4) proper indentation / right vars names (meaningful)
-5) check what exception assignment specifies to handle
-6) only write comments when it is important
-
-Q:
-1) do I keep pre-generated keys or do I delete everything before submission? (deleted)
-2) ! how do we submit, as a achieve project? client server
-3) do we need to take care of case sensitivity? (bob != Bob || bob == Bob) diff
-4) do we need validation for the save when user tries to send msg to him/herself (check)
-4) ask if output for server and client is good enough
-5) User connected: alice || login from user 9f0a1765d9e72468b874eb0f749b5a9d (hex)
-6) do we need validation for (Do you want to send a message? (yes/no)) in user types anything but yes\no. like to have
-infinite loop till user provides answer yes/or
-7) make it able to send empty msg? (must be sometting)
-8) no need for an exit from the server (only ctrl + c)
+ * Only submit Client.java & Serve.java (no other files/folders)
+ * Change so Alice != alice
+ * If user typed anything but yes/no for this prompt "Do you want to send a message? (yes/no)" and we gonna prompt it once again to
+user till user types yes or no
+* make it impossible to send an empty message. if user try to send empty message then user will be prompt ance again with the
+ "Enter message: " prompt.
+* Write only comments for code that is new (new been provide in the assignment or complex, ask ai)
+* Check code for proper indentation / variables names, so they are meaningful
+* my program has process where public ket use for encryption and then private key used for decryption
+*

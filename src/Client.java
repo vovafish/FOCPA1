@@ -2,11 +2,9 @@ import java.io.*;
 import java.math.BigInteger;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.security.KeyFactory;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.MessageDigest;
+import java.security.*;
 import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.Date;
 import java.util.Scanner;
 
@@ -65,6 +63,8 @@ public class Client {
                         dos.writeUTF(recipientUserId);
                         dos.writeLong(new Date().getTime());
                         dos.writeUTF(message);
+                        dos.writeInt(signMessage(message, userId).length);
+                        dos.write(signMessage(message, userId));
                     }
                 } while ("yes".equalsIgnoreCase(response));
 
@@ -113,8 +113,25 @@ public class Client {
         }
     }
 
-    public static String toHexString(byte[] bytes) {
-        BigInteger bi = new BigInteger(1, bytes);
-        return String.format("%0" + (bytes.length << 1) + "x", bi);
+    private static byte[] signMessage(String message, String userId) {
+        try {
+            File prvKeyFile = new File(userId + ".prv");
+            KeyFactory kf = KeyFactory.getInstance("RSA");
+            PrivateKey privateKey = kf.generatePrivate(new PKCS8EncodedKeySpec(readKeyBytes(prvKeyFile)));
+
+            Signature signature = Signature.getInstance("SHA256withRSA");
+            signature.initSign(privateKey);
+            signature.update(message.getBytes(StandardCharsets.UTF_8));
+            return signature.sign();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private static byte[] readKeyBytes(File keyFile) throws IOException {
+        try (FileInputStream fis = new FileInputStream(keyFile)) {
+            return fis.readAllBytes();
+        }
     }
 }

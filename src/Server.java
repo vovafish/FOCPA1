@@ -1,8 +1,11 @@
 import java.io.*;
+import java.math.BigInteger;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.*;
 
 public class Server {
@@ -25,6 +28,9 @@ public class Server {
                     new Thread(() -> {
                         try {
                             handleClient(socket);
+                        } catch (EOFException eof) {
+                            // Client disconnected unexpectedly
+                            System.out.println("Client disconnected unexpectedly.");
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
@@ -72,12 +78,13 @@ public class Server {
         }
     }
 
-    private static void handleClient(Socket socket) {
+    private static void handleClient(Socket socket) throws IOException {
         try (DataInputStream dis = new DataInputStream(socket.getInputStream());
              DataOutputStream dos = new DataOutputStream(socket.getOutputStream())) {
 
             String userId = dis.readUTF();
-            System.out.println("User connected: " + userId);
+            String hashedUserId = hashUserId(userId); // Hash the user ID
+            System.out.println("User connected: " + hashedUserId);
 
             synchronized (messagesLock) {
                 List<String> userMessages = messages.getOrDefault(userId, new ArrayList<>());
@@ -93,7 +100,7 @@ public class Server {
                     String senderUserId = dis.readUTF();
                     if ("exit".equalsIgnoreCase(senderUserId)) {
                         // If the client sends "exit," close the connection
-                        System.out.println("User disconnected: " + userId);
+                        System.out.println("User disconnected: " + hashedUserId);
                         socket.close();
                         break;
                     }
@@ -102,28 +109,75 @@ public class Server {
                     long timestamp = dis.readLong();
                     String message = dis.readUTF();
 
-                    synchronized (messagesLock) {
-                        List<String> recipientMessages = messages.getOrDefault(recipientUserId, new ArrayList<>());
-                        recipientMessages.add(new Date(timestamp) + "\nMessage: " + message);
-                        messages.put(recipientUserId, recipientMessages);
+                    int signatureLength = dis.readInt();
+                    byte[] signature = new byte[signatureLength];
+                    dis.readFully(signature);
+
+                    if (verifySignature(message.getBytes(StandardCharsets.UTF_8), signature, senderUserId)) {
+                        synchronized (messagesLock) {
+                            List<String> recipientMessages = messages.getOrDefault(recipientUserId, new ArrayList<>());
+                            recipientMessages.add(new Date(timestamp) + "\nMessage: " + message);
+                            messages.put(recipientUserId, recipientMessages);
+                        }
+
+                        // Modified output for server console
+                        System.out.println("Incoming message from " + senderUserId + "\n"
+                                + new Date(timestamp) + "\nRecipient: " + recipientUserId + "\nMessage: " + message);
+
+                        // Send message to the client without recipient information
+                        dos.writeUTF(new Date(timestamp) + "\nMessage: " + message);
+                    } else {
+                        System.out.println("Message signature verification failed for message from user: " + senderUserId);
                     }
-
-                    // Modified output for server console
-                    System.out.println("Incoming message from " + senderUserId + "\n"
-                            + new Date(timestamp) + "\nRecipient: " + recipientUserId + "\nMessage: " + message);
-
-                    // Send message to the client without recipient information
-                    dos.writeUTF(new Date(timestamp) + "\nMessage: " + message);
-
                 } catch (EOFException e) {
                     // The client has closed the connection
-                    System.out.println("User disconnected: " + userId);
+                    System.out.println("User disconnected: " + hashedUserId);
+                    socket.close();
                     break;
                 }
             }
-        } catch (IOException e) {
-            e.printStackTrace();
         }
     }
 
+    private static boolean verifySignature(byte[] data, byte[] signature, String userId) {
+        try {
+            File pubKeyFile = new File(userId + ".pub");
+            KeyFactory kf = KeyFactory.getInstance("RSA");
+            PublicKey publicKey = kf.generatePublic(new X509EncodedKeySpec(readKeyBytes(pubKeyFile)));
+
+            Signature sig = Signature.getInstance("SHA256withRSA");
+            sig.initVerify(publicKey);
+            sig.update(data);
+            return sig.verify(signature);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    private static String hashUserId(String userId) {
+        try {
+            String secret = "gfhk2024:";
+            String userIdWithSecret = secret + userId; // Prepend the secret string to the user ID
+            MessageDigest md = MessageDigest.getInstance("MD5"); // Get MD5 message digest instance
+            byte[] hashBytes = md.digest(userIdWithSecret.getBytes(StandardCharsets.UTF_8)); // Compute the hash
+            // Convert byte array to hexadecimal string
+            BigInteger number = new BigInteger(1, hashBytes);
+            StringBuilder hexString = new StringBuilder(number.toString(16));
+            // Pad with leading zeros to ensure 32-bit length
+            while (hexString.length() < 32) {
+                hexString.insert(0, '0');
+            }
+            return hexString.toString(); // Return the hashed user ID
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private static byte[] readKeyBytes(File keyFile) throws IOException {
+        try (FileInputStream fis = new FileInputStream(keyFile)) {
+            return fis.readAllBytes();
+        }
+    }
 }

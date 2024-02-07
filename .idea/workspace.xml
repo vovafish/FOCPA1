@@ -4,11 +4,12 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="92128e98-6ce7-45ec-b878-6d22de5f44f2" name="Changes" comment="finally the server does close the conncetion succesfully and messags are send/recieve succesfully">
-      <change afterPath="$PROJECT_DIR$/src/todo" afterDir="false" />
+    <list default="true" id="92128e98-6ce7-45ec-b878-6d22de5f44f2" name="Changes" comment="commit to test in the uni linux system">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/Client.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/Client.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/RSAKeyGen.java" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/Server.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/Server.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/todo" beforeDir="false" afterPath="$PROJECT_DIR$/src/todo" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -92,7 +93,15 @@
       <option name="project" value="LOCAL" />
       <updated>1707229531574</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="commit to test in the uni linux system">
+      <option name="closed" value="true" />
+      <created>1707314957254</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1707314957254</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -112,6 +121,7 @@
     <MESSAGE value="RSA/ECB/PKCS1Padding algorithm, with the appropriate public/private" />
     <MESSAGE value="Implemented secure communication between client and server using RSA encryption and MD5 hashing. The server now acts as an intermediary, decrypting messages from the sender, re-encrypting them for the recipient, and storing them locally in encrypted form. Userids are hashed using MD5 for secure storage and retrieval. Each message also includes an unencrypted timestamp." />
     <MESSAGE value="finally the server does close the conncetion succesfully and messags are send/recieve succesfully" />
-    <option name="LAST_COMMIT_MESSAGE" value="finally the server does close the conncetion succesfully and messags are send/recieve succesfully" />
+    <MESSAGE value="commit to test in the uni linux system" />
+    <option name="LAST_COMMIT_MESSAGE" value="commit to test in the uni linux system" />
   </component>
 </project>
