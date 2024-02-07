@@ -86,34 +86,35 @@ public class Server {
                 for (String message : userMessages) {
                     dos.writeUTF(message);
                 }
-
-                System.out.println("Current messages HashMap size: " + messages.size());
-                System.out.println("Current messages HashMap content: " + messages);
             }
 
             while (true) {
                 try {
-                    String recipientUserId = dis.readUTF();
-
-                    if ("exit".equalsIgnoreCase(recipientUserId)) {
+                    String senderUserId = dis.readUTF();
+                    if ("exit".equalsIgnoreCase(senderUserId)) {
                         // If the client sends "exit," close the connection
                         System.out.println("User disconnected: " + userId);
                         socket.close();
                         break;
                     }
 
+                    String recipientUserId = dis.readUTF();
                     long timestamp = dis.readLong();
                     String message = dis.readUTF();
 
                     synchronized (messagesLock) {
                         List<String> recipientMessages = messages.getOrDefault(recipientUserId, new ArrayList<>());
-                        recipientMessages.add("Date: " + new Date(timestamp) + "\nMessage: " + message);
+                        recipientMessages.add(new Date(timestamp) + "\nMessage: " + message);
                         messages.put(recipientUserId, recipientMessages);
                     }
 
-                    // Print updated messages for debugging
-                    System.out.println("Current messages HashMap size: " + messages.size());
-                    System.out.println("Current messages HashMap content: " + messages);
+                    // Modified output for server console
+                    System.out.println("Incoming message from " + senderUserId + "\n"
+                            + new Date(timestamp) + "\nRecipient: " + recipientUserId + "\nMessage: " + message);
+
+                    // Send message to the client without recipient information
+                    dos.writeUTF(new Date(timestamp) + "\nMessage: " + message);
+
                 } catch (EOFException e) {
                     // The client has closed the connection
                     System.out.println("User disconnected: " + userId);
@@ -124,4 +125,5 @@ public class Server {
             e.printStackTrace();
         }
     }
+
 }

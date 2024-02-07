@@ -36,7 +36,6 @@ public class Client {
                 int numMessages = dis.readInt();
                 System.out.println("There are " + numMessages + " message(s) for you:");
 
-                // For each message, display the message
                 for (int i = 0; i < numMessages; i++) {
                     String message = dis.readUTF();
                     System.out.println(message);
@@ -62,6 +61,7 @@ public class Client {
                         String message = scanner.nextLine();
 
                         // Send recipient userid, timestamp, and message to server
+                        dos.writeUTF(userId); // Sender's ID
                         dos.writeUTF(recipientUserId);
                         dos.writeLong(new Date().getTime());
                         dos.writeUTF(message);
