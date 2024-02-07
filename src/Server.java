@@ -1,3 +1,4 @@
+import javax.crypto.Cipher;
 import java.io.*;
 import java.math.BigInteger;
 import java.net.ServerSocket;
@@ -107,27 +108,25 @@ public class Server {
 
                     String recipientUserId = dis.readUTF();
                     long timestamp = dis.readLong();
-                    String message = dis.readUTF();
+                    String encryptedMessage = dis.readUTF();
 
-                    int signatureLength = dis.readInt();
-                    byte[] signature = new byte[signatureLength];
-                    dis.readFully(signature);
-
-                    if (verifySignature(message.getBytes(StandardCharsets.UTF_8), signature, senderUserId)) {
+                    // Decrypting the received message
+                    String decryptedMessage = decryptMessage(encryptedMessage);
+                    if (decryptedMessage != null) {
                         synchronized (messagesLock) {
                             List<String> recipientMessages = messages.getOrDefault(recipientUserId, new ArrayList<>());
-                            recipientMessages.add(new Date(timestamp) + "\nMessage: " + message);
+                            recipientMessages.add(new Date(timestamp) + "\nMessage: " + decryptedMessage);
                             messages.put(recipientUserId, recipientMessages);
                         }
 
                         // Modified output for server console
-                        System.out.println("Incoming message from " + senderUserId + "\n"
-                                + new Date(timestamp) + "\nRecipient: " + recipientUserId + "\nMessage: " + message);
+                        System.out.println("Incoming message from " + userId + "\n"
+                                + new Date(timestamp) + "\nRecipient: " + recipientUserId + "\nDecrypted Message: " + decryptedMessage);
 
-                        // Send message to the client without recipient information
-                        dos.writeUTF(new Date(timestamp) + "\nMessage: " + message);
+                        // Send acknowledgment to the client
+                        dos.writeUTF("Message received and decrypted successfully.");
                     } else {
-                        System.out.println("Message signature verification failed for message from user: " + senderUserId);
+                        System.out.println("Message decryption failed for message from user: " + senderUserId);
                     }
                 } catch (EOFException e) {
                     // The client has closed the connection
@@ -139,19 +138,19 @@ public class Server {
         }
     }
 
-    private static boolean verifySignature(byte[] data, byte[] signature, String userId) {
+    private static String decryptMessage(String encryptedMessage) {
         try {
-            File pubKeyFile = new File(userId + ".pub");
+            File prvKeyFile = new File("server.prv");
             KeyFactory kf = KeyFactory.getInstance("RSA");
-            PublicKey publicKey = kf.generatePublic(new X509EncodedKeySpec(readKeyBytes(pubKeyFile)));
+            PrivateKey privateKey = kf.generatePrivate(new PKCS8EncodedKeySpec(readKeyBytes(prvKeyFile)));
 
-            Signature sig = Signature.getInstance("SHA256withRSA");
-            sig.initVerify(publicKey);
-            sig.update(data);
-            return sig.verify(signature);
+            Cipher cipher = Cipher.getInstance("RSA");
+            cipher.init(Cipher.DECRYPT_MODE, privateKey);
+            byte[] decryptedBytes = cipher.doFinal(Base64.getDecoder().decode(encryptedMessage));
+            return new String(decryptedBytes, StandardCharsets.UTF_8);
         } catch (Exception e) {
             e.printStackTrace();
-            return false;
+            return null;
         }
     }
 

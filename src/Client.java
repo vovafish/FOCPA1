@@ -1,10 +1,11 @@
+import javax.crypto.Cipher;
 import java.io.*;
-import java.math.BigInteger;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.Base64;
 import java.util.Date;
 import java.util.Scanner;
 
@@ -58,13 +59,14 @@ public class Client {
                         System.out.println("Enter message:");
                         String message = scanner.nextLine();
 
-                        // Send recipient userid, timestamp, and message to server
+                        // Encrypting the message before sending
+                        String encryptedMessage = encryptMessage(message);
+
+                        // Send recipient userid, timestamp, and encrypted message to server
                         dos.writeUTF(userId); // Sender's ID
                         dos.writeUTF(recipientUserId);
                         dos.writeLong(new Date().getTime());
-                        dos.writeUTF(message);
-                        dos.writeInt(signMessage(message, userId).length);
-                        dos.write(signMessage(message, userId));
+                        dos.writeUTF(encryptedMessage);
                     }
                 } while ("yes".equalsIgnoreCase(response));
 
@@ -113,16 +115,16 @@ public class Client {
         }
     }
 
-    private static byte[] signMessage(String message, String userId) {
+    private static String encryptMessage(String message) {
         try {
-            File prvKeyFile = new File(userId + ".prv");
+            File pubKeyFile = new File("server.pub");
             KeyFactory kf = KeyFactory.getInstance("RSA");
-            PrivateKey privateKey = kf.generatePrivate(new PKCS8EncodedKeySpec(readKeyBytes(prvKeyFile)));
+            PublicKey publicKey = kf.generatePublic(new X509EncodedKeySpec(readKeyBytes(pubKeyFile)));
 
-            Signature signature = Signature.getInstance("SHA256withRSA");
-            signature.initSign(privateKey);
-            signature.update(message.getBytes(StandardCharsets.UTF_8));
-            return signature.sign();
+            Cipher cipher = Cipher.getInstance("RSA");
+            cipher.init(Cipher.ENCRYPT_MODE, publicKey);
+            byte[] encryptedBytes = cipher.doFinal(message.getBytes(StandardCharsets.UTF_8));
+            return Base64.getEncoder().encodeToString(encryptedBytes);
         } catch (Exception e) {
             e.printStackTrace();
             return null;
